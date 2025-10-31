@@ -30,21 +30,21 @@ class User extends Authenticatable
         'password',
     ];
 
-    public function materials()
+    public function procurement()
     {
-        return $this->hasMany(Material::class, 'user_id')
-            ->where('role', ['Owner', 'Production Staff']);
+        return $this->hasMany(Procurement::class, 'user_id', 'id')
+            ->where('role', 'Owner');
     }
 
     public function productions()
     {
-        return $this->hasMany(Production::class, 'user_id')
+        return $this->hasMany(Production::class, 'user_id', 'id')
             ->where('role', ['Owner', 'Production Staff']);
     }
 
     public function shipments()
     {
-        return $this->hasMany(Shipment::class, 'user_id')
+        return $this->hasMany(Shipment::class, 'user_id', 'id')
             ->where('role', ['Owner', 'Distribution Staff']);
     }
 }

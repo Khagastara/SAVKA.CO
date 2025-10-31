@@ -20,11 +20,11 @@ class ShipmentDetail extends Model
 
     public function shipment()
     {
-        return $this->belongsTo(Shipment::class, 'shipment_id');
+        return $this->belongsTo(Shipment::class, 'shipment_id', 'id');
     }
 
     public function product()
     {
-        return $this->belongsTo(Product::class, 'product_id');
+        return $this->belongsTo(Product::class, 'product_id', 'id');
     }
 }

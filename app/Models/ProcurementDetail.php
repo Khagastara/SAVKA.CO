@@ -20,11 +20,11 @@ class ProcurementDetail extends Model
 
     public function procurement()
     {
-        return $this->belongsTo(Procurement::class, 'procurement_id');
+        return $this->belongsTo(Procurement::class, 'procurement_id', 'id');
     }
 
     public function material()
     {
-        return $this->belongsTo(Material::class, 'material_id');
+        return $this->belongsTo(Material::class, 'material_id', 'id');
     }
 }

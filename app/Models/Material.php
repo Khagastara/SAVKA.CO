@@ -15,22 +15,17 @@ class Material extends Model
 
     protected $fillable = [
         'material_name',
+        'material_color',
         'material_quantity',
-        'user_id',
     ];
-
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'user_id')->where('role', ['Owner', 'Production Staff']);
-    }
 
     public function procurementDetail()
     {
-        return $this->hasMany(ProcurementDetail::class, 'material_id');
+        return $this->hasMany(ProcurementDetail::class, 'material_id', 'id');
     }
 
     public function production()
     {
-        return $this->hasMany(Production::class, 'material_id');
+        return $this->hasMany(Production::class, 'material_id', 'id');
     }
 }

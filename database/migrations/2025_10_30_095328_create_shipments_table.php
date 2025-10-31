@@ -20,9 +20,11 @@ return new class extends Migration
 
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('report_id');
+            $table->unsignedBigInteger('history_demand_id');
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('report_id')->references('id')->on('reports')->onDelete('cascade');
+            $table->foreign('history_demand_id')->references('id')->on('history_demands')->onDelete('cascade');
             $table->timestamps();
         });
     }

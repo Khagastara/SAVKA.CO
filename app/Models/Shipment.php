@@ -19,26 +19,27 @@ class Shipment extends Model
         'shipment_status',
         'user_id',
         'report_id',
+        'history_demand_id',
     ];
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id')
+        return $this->belongsTo(User::class, 'user_id', 'id')
             ->where('role', ['Owner', 'Distribution Staff']);
     }
 
     public function report()
     {
-        return $this->belongsTo(Report::class, 'report_id');
+        return $this->belongsTo(Report::class, 'report_id', 'id');
     }
 
     public function shipmentDetail()
     {
-        return $this->hasMany(ShipmentDetail::class, 'shipment_id');
+        return $this->hasMany(ShipmentDetail::class, 'shipment_id', 'id');
     }
 
     public function historyDemand()
     {
-        return $this->hasMany(HistoryDemand::class, 'shipment_id');
+        return $this->belongsTo(HistoryDemand::class, 'shipment_id', 'id');
     }
 }

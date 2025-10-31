@@ -17,6 +17,9 @@ return new class extends Migration
             $table->integer('week_used');
             $table->integer('predicted_demand');
             $table->integer('accurancy');
+
+            $table->unsignedBigInteger('history_demand_id');
+            $table->foreign('history_demand_id')->references('id')->on('history_demands')->onDelete('cascade');
             $table->timestamps();
         });
     }

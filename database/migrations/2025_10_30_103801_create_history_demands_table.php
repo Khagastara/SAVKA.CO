@@ -17,12 +17,6 @@ return new class extends Migration
             $table->integer('month');
             $table->integer('year');
             $table->integer('demand_quantity');
-
-            $table->unsignedBigInteger('shipment_id');
-            $table->unsignedBigInteger('forecasting_id');
-
-            $table->foreign('shipment_id')->references('id')->on('shipments')->onDelete('cascade');
-            $table->foreign('forecasting_id')->references('id')->on('forecastings')->onDelete('cascade');
             $table->timestamps();
         });
     }

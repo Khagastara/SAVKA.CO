@@ -21,11 +21,16 @@ class Report extends Model
 
     public function procurement()
     {
-        return $this->hasMany(Procurement::class, 'report_id');
+        return $this->hasMany(Procurement::class, 'report_id', 'id');
     }
 
     public function production()
     {
-        return $this->hasMany(Production::class, 'report_id');
+        return $this->hasMany(Production::class, 'report_id', 'id');
+    }
+
+    public function shipment()
+    {
+        return $this->hasMany(Shipment::class, 'report_id', 'id');
     }
 }

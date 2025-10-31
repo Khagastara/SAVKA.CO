@@ -17,17 +17,15 @@ class HistoryDemand extends Model
         'month',
         'year',
         'demand_quantity',
-        'shipment_id',
-        'forecasting_id',
     ];
 
     public function shipment()
     {
-        return $this->belongsTo(Shipment::class, 'shipment_id');
+        return $this->hasMany(Shipment::class, 'shipment_id', 'id');
     }
 
     public function forecasting()
     {
-        return $this->belongsTo(Forecasting::class, 'forecasting_id');
+        return $this->hasOne(Forecasting::class, 'forecasting_id', 'id');
     }
 }

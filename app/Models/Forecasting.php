@@ -16,11 +16,12 @@ class Forecasting extends Model
         'forecast_date',
         'week_used',
         'predicted_demand',
-        'accuracy'
+        'accuracy',
+        'history_demand_id',
     ];
 
     public function historyDemand()
     {
-        return $this->hasMany(HistoryDemand::class, 'forecasting_id');
+        return $this->belongsTo(HistoryDemand::class, 'history_demand_id', 'id');
     }
 }

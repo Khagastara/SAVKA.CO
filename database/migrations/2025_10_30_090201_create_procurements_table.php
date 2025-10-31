@@ -16,8 +16,10 @@ return new class extends Migration
             $table->date('procurement_date');
             $table->integer('total_cost');
 
+            $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('report_id');
 
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('report_id')->references('id')->on('reports')->onDelete('cascade');
             $table->timestamps();
         });

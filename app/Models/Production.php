@@ -25,22 +25,22 @@ class Production extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id')
+        return $this->belongsTo(User::class, 'user_id', 'id')
             ->where('role', ['Owner', 'Production Staff']);
     }
 
     public function productDetail()
     {
-        return $this->belongsTo(ProductDetail::class, 'product_detail_id');
+        return $this->belongsTo(ProductDetail::class, 'product_detail_id', 'id');
     }
 
     public function material()
     {
-        return $this->belongsTo(Material::class, 'material_id');
+        return $this->belongsTo(Material::class, 'material_id', 'id');
     }
 
     public function report()
     {
-        return $this->belongsTo(Report::class, 'report_id');
+        return $this->belongsTo(Report::class, 'report_id', 'id');
     }
 }
