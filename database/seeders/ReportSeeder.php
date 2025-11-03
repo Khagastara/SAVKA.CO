@@ -79,7 +79,25 @@ class ReportSeeder extends Seeder
                 'description' => 'Penjualan Jl Gatot Subroto No 35, Banyuwangi',
                 'income' => 220000,
                 'expenses' => 0,
-            ]
+            ],
+            [
+                'report_date' => '2025-10-24',
+                'description' => 'Penjualan Jl Pahlawan No 40, Banyuwangi',
+                'income' => 180000,
+                'expenses' => 0,
+            ],
+            [
+                'report_date' => '2025-10-28',
+                'description' => 'Penjualan Jl Merdeka No 45, Banyuwangi',
+                'income' => 156000,
+                'expenses' => 0,
+            ],
+            [
+                'report_date' => '2025-10-30',
+                'description' => 'Penjualan Jl Kemerdekaan No 50, Banyuwangi',
+                'income' => 260000,
+                'expenses' => 0,
+            ],
         ]);
     }
 }

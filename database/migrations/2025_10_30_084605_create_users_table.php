@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('password');
             $table->string('name');
-            $table->integer('phone_number')->unique();
+            $table->string('phone_number')->unique();
             $table->string('address');
             $table->enum('role', ['Owner', 'Production Staff', 'Distribution Staff']);
             $table->timestamps();

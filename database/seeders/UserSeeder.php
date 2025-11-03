@@ -17,9 +17,9 @@ class UserSeeder extends Seeder
         User::insert([
             [
                 'username' => 'admin123',
-                'admin' => 'adminsavkoco@gmail.com',
+                'email' => 'adminsavkoco@gmail.com',
                 'password' => Hash::make('4dm1n5savko'),
-                'name' => 'Admin Savko.Co',
+                'name' => 'Admin Savka.Co',
                 'phone_number' => '081234567890',
                 'address' => 'Jl. Example No. 123, Banyuwangi',
                 'role' => 'Owner'
