@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard Distribusi')</title>
     <style>
         :root {
@@ -133,16 +134,16 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a href="" class="nav-link {{ request()->routeIs('distribution.production') ? 'active' : '' }}">
+                <a href="{{ route('distribution.product.index') }}" class="nav-link {{ request()->routeIs('distribution.product.index') ? 'active' : '' }}">
                     <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M3 12l9-9 9 9M4 10v10h16V10"/>
                     </svg>
-                    <span>Produksi</span>
+                    <span>Produk</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a href="" class="nav-link {{ request()->routeIs('distribution.shipments') ? 'active' : '' }}">
+                <a href="{{ route('distribution.shipment.index') }}" class="nav-link {{ request()->routeIs('distribution.shipment.index') ? 'active' : '' }}">
                     <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M3 10h18l-1 8H4l-1-8zm3 8a2 2 0 104 0m-4 0a2 2 0 114 0m10 0a2 2 0 104 0m-4 0a2 2 0 114 0"/>

@@ -17,9 +17,9 @@ class ProductController extends Controller
     {
         $user = Auth::user();
 
-        if (!in_array($user->role, ['Owner', 'Production Staff'])) {
-            abort(403, 'Access denied.');
-        }
+        // if (!in_array($user->role, ['Owner', 'Production Staff'])) {
+        //     abort(403, 'Access denied.');
+        // }
 
         $products = Product::with('productDetail')->get();
 

@@ -22,4 +22,9 @@ class ProductDetail extends Model
     {
         return $this->belongsTo(Product::class, 'product_id', 'id');
     }
+
+    public function shipmentDetails()
+    {
+        return $this->hasMany(ShipmentDetail::class, 'product_detail_id', 'id');
+    }
 }

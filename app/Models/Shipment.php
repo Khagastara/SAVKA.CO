@@ -24,8 +24,7 @@ class Shipment extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id', 'id')
-            ->where('role', ['Owner', 'Distribution Staff']);
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 
     public function report()
@@ -40,6 +39,6 @@ class Shipment extends Model
 
     public function historyDemand()
     {
-        return $this->belongsTo(HistoryDemand::class, 'shipment_id', 'id');
+        return $this->belongsTo(HistoryDemand::class, 'history_demand_id', 'id');
     }
 }

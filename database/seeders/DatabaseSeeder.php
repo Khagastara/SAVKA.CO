@@ -24,7 +24,6 @@ class DatabaseSeeder extends Seeder
             ProductSeeder::class,
             ProductDetailSeeder::class,
             ProductionSeeder::class,
-            ReportSeeder::class,
             HistoryDemandSeeder::class,
             ShipmentSeeder::class,
             ShipmentDetailSeeder::class,

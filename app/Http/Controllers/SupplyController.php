@@ -17,16 +17,20 @@ class SupplyController extends Controller
      */
     public function index()
     {
-        $user = Auth::user();
-
-        // Everyone (Owner + Production Staff) can view materials
-        $materials = Material::all();
+        $materials = Material::paginate(10);
 
         return response()->json([
             'success' => true,
-            'data' => $materials
+            'data' => $materials->items(),
+            'pagination' => [
+                'current_page' => $materials->currentPage(),
+                'last_page' => $materials->lastPage(),
+                'per_page' => $materials->perPage(),
+                'total' => $materials->total(),
+            ],
         ]);
     }
+
 
     /**
      * Add new material (Owner only).

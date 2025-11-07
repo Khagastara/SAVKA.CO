@@ -6,6 +6,7 @@ use Illuminate\Routing\Controller;
 use App\Models\Shipment;
 use App\Models\ShipmentDetail;
 use App\Models\Product;
+use App\Models\ProductDetail;
 use App\Models\HistoryDemand;
 use App\Models\Report;
 use Illuminate\Http\Request;
@@ -24,9 +25,14 @@ class ShipmentController extends Controller
         $user = Auth::user();
 
         if ($user->role === 'Owner') {
-            $shipments = Shipment::with(['shipmentDetail.product', 'user', 'report'])->get();
+            $shipments = Shipment::with(['shipmentDetail.productDetail.product', 'user', 'report'])
+            ->orderBy('shipment_date', 'DESC')
+            ->orderBy('created_at', 'DESC')
+            ->get();
         } else {
-            $shipments = Shipment::with(['shipmentDetail.product', 'user', 'report'])
+            $shipments = Shipment::with(['shipmentDetail.productDetail.product', 'user', 'report'])
+                ->orderBy('shipment_date', 'DESC')
+                ->orderBy('created_at', 'DESC')
                 ->where('user_id', $user->id)
                 ->get();
         }
@@ -50,6 +56,10 @@ class ShipmentController extends Controller
             'destination_address' => 'required|string',
             'total_price' => 'required|integer',
             'product_details' => 'required|array',
+            'product_details.*.product_id' => 'required|exists:products,id',
+            'product_details.*.product_size' => 'required|string',
+            'product_details.*.quantity' => 'required|integer|min:1',
+            'product_details.*.sub_total' => 'required|integer|min:0',
         ]);
 
         $shipmentDate = Carbon::parse($validated['shipment_date']);
@@ -93,18 +103,39 @@ class ShipmentController extends Controller
         ]);
 
         foreach ($validated['product_details'] as $detail) {
+            $productDetail = ProductDetail::whereHas('product', function ($query) use ($detail) {
+                $query->where('id', $detail['product_id']);
+            })
+            ->where('product_size', $detail['product_size'])
+            ->first();
+
+            if (!$productDetail) {
+                return response()->json([
+                    'message' => "Produk dengan ID {$detail['product_id']} dan ukuran {$detail['product_size']} tidak ditemukan."
+                ], 404);
+            }
+
+            // Validasi stok
+            if ($productDetail->product_stock < $detail['quantity']) {
+                return response()->json([
+                    'message' => "Stok tidak mencukupi untuk produk {$productDetail->product->product_name} ukuran {$productDetail->product_size}. Stok tersedia: {$productDetail->product_stock}"
+                ], 400);
+            }
+
             ShipmentDetail::create([
                 'shipment_id' => $shipment->id,
-                'product_id' => $detail['product_id'],
+                'product_detail_id' => $productDetail->id,
                 'product_quantity' => $detail['quantity'],
                 'sub_total' => $detail['sub_total'],
             ]);
+
+            $productDetail->decrement('product_stock', $detail['quantity']);
         }
 
         return response()->json([
             'message' => 'Data pengiriman berhasil dibuat.',
-            'shipment' => $shipment->load('shipmentDetail.product')
-        ]);
+            'shipment' => $shipment->load('shipmentDetail.productDetail.product')
+        ], 201);
     }
 
     /**

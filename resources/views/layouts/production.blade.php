@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard Produksi')</title>
     <style>
         :root {
@@ -134,7 +135,7 @@
             </li>
 
             <li class="nav-item">
-                <a href="" class="nav-link {{ request()->routeIs('production.supply') ? 'active' : '' }}">
+                <a href="{{ route('production.supply') }}" class="nav-link {{ request()->routeIs('production.supply') ? 'active' : '' }}">
                     <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M4 7V4a1 1 0 011-1h3m0 0h8m0 0h3a1 1 0 011 1v3m-1 0V4H5v3M4 7v13a1 1 0 001 1h14a1 1 0 001-1V7H4z"/>
@@ -144,7 +145,7 @@
             </li>
 
             <li class="nav-item">
-                <a href="" class="nav-link {{ request()->routeIs('production.schedule') ? 'active' : '' }}">
+                <a href="{{ route('production.product.production') }}" class="nav-link {{ request()->routeIs('production.product.production') ? 'active' : '' }}">
                     <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M3 12l9-9 9 9M4 10v10h16V10"/>
@@ -154,7 +155,7 @@
             </li>
 
             <li class="nav-item">
-                <a href="" class="nav-link {{ request()->routeIs('production.products') ? 'active' : '' }}">
+                <a href="{{ route('production.product.index') }}" class="nav-link {{ request()->routeIs('production.product.index') ? 'active' : '' }}">
                     <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>

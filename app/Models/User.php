@@ -38,13 +38,12 @@ class User extends Authenticatable
 
     public function productions()
     {
-        return $this->hasMany(Production::class, 'user_id', 'id')
-            ->where('role', ['Owner', 'Production Staff']);
+        return $this->hasMany(Production::class, 'user_id', 'id');
     }
 
     public function shipments()
     {
         return $this->hasMany(Shipment::class, 'user_id', 'id')
-            ->where('role', ['Owner', 'Distribution Staff']);
+            ->whereIn('role', ['Owner', 'Distribution Staff']);
     }
 }

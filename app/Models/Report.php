@@ -14,7 +14,7 @@ class Report extends Model
 
     protected $fillable = [
         'report_date',
-        'report_content',
+        'description',
         'income',
         'expenses',
     ];

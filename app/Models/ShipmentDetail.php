@@ -14,8 +14,9 @@ class ShipmentDetail extends Model
 
     protected $fillable = [
         'product_quantity',
+        'sub_total',
         'shipment_id',
-        'product_id',
+        'product_detail_id',
     ];
 
     public function shipment()
@@ -23,8 +24,8 @@ class ShipmentDetail extends Model
         return $this->belongsTo(Shipment::class, 'shipment_id', 'id');
     }
 
-    public function product()
+    public function productDetail()
     {
-        return $this->belongsTo(Product::class, 'product_id', 'id');
+        return $this->belongsTo(ProductDetail::class, 'product_detail_id', 'id');
     }
 }

@@ -21,7 +21,7 @@ class ReportSeeder extends Seeder
                 'expenses' => 500000,
             ],
             [
-                'report_date' => '2024-01-23',
+                'report_date' => '2025-01-23',
                 'description' => 'Pembelian Bahan Baku',
                 'income' => 0,
                 'expenses' => 300000,

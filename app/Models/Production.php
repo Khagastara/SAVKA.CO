@@ -26,7 +26,7 @@ class Production extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id', 'id')
-            ->where('role', ['Owner', 'Production Staff']);
+            ->whereIn('role', ['Owner', 'Production Staff']);
     }
 
     public function productDetail()
