@@ -16,7 +16,7 @@ class Forecasting extends Model
         'forecast_date',
         'week_used',
         'predicted_demand',
-        'accuracy',
+        'accurancy',
         'history_demand_id',
     ];
 

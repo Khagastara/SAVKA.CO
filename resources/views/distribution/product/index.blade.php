@@ -1,7 +1,7 @@
 @extends('layouts.distribution')
 
-@section('title', 'Data Produksi')
-@section('header', 'Data Produksi')
+@section('title', 'Daftar Produk')
+@section('header', 'Daftar Produk')
 
 @section('styles')
 <style>
@@ -12,55 +12,32 @@
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
     }
 
-    .info-banner {
-        background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
-        padding: 16px 20px;
-        border-radius: 12px;
+    .search-box {
         margin-bottom: 24px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        border-left: 4px solid #2196F3;
+        position: relative;
     }
 
-    .info-banner svg {
-        width: 24px;
-        height: 24px;
-        color: #1565C0;
-    }
-
-    .info-banner p {
-        color: #1565C0;
-        margin: 0;
-        font-size: 14px;
-    }
-
-    .filter-bar {
-        display: flex;
-        gap: 16px;
-        margin-bottom: 24px;
-        flex-wrap: wrap;
-    }
-
-    .filter-item {
-        flex: 1;
-        min-width: 200px;
-    }
-
-    .filter-item label {
-        display: block;
-        margin-bottom: 8px;
-        font-weight: 600;
-        color: var(--charcoal-gray);
-        font-size: 14px;
-    }
-
-    .filter-item select {
+    .search-box input {
         width: 100%;
-        padding: 10px;
+        padding: 12px 40px 12px 16px;
         border: 2px solid var(--mocha-cream);
-        border-radius: 8px;
+        border-radius: 10px;
         font-size: 14px;
+        transition: all 0.3s ease;
+    }
+
+    .search-box input:focus {
+        outline: none;
+        border-color: var(--sage-green);
+    }
+
+    .search-icon {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--charcoal-gray);
+        opacity: 0.5;
     }
 
     .table-container {
@@ -93,22 +70,27 @@
         background: var(--warm-white);
     }
 
-    .status-badge {
+    .badge {
         display: inline-block;
-        padding: 6px 16px;
+        padding: 6px 12px;
         border-radius: 20px;
         font-size: 12px;
         font-weight: 600;
     }
 
-    .status-progress {
+    .badge-stock {
+        background: #E8F5E9;
+        color: #2E7D32;
+    }
+
+    .badge-low {
         background: #FFF3E0;
         color: #E65100;
     }
 
-    .status-done {
-        background: #E8F5E9;
-        color: #2E7D32;
+    .badge-out {
+        background: #FFEBEE;
+        color: #C62828;
     }
 
     .pagination {
@@ -157,38 +139,16 @@
         margin-bottom: 20px;
         opacity: 0.5;
     }
-
-    .product-highlight {
-        color: var(--sage-green);
-        font-weight: 600;
-    }
 </style>
 @endsection
 
 @section('content')
 <div class="content-card">
-    <div class="info-banner">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Cari produk...">
+        <svg class="search-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
         </svg>
-        <p>Anda dapat melihat data produksi yang telah selesai untuk keperluan distribusi produk.</p>
-    </div>
-
-    <div class="filter-bar">
-        <div class="filter-item">
-            <label>Filter Status</label>
-            <select id="statusFilter" onchange="filterData()">
-                <option value="">Semua Status</option>
-                <option value="Dalam Progres">Dalam Progres</option>
-                <option value="Selesai">Selesai</option>
-            </select>
-        </div>
-        <div class="filter-item">
-            <label>Filter Produk</label>
-            <select id="productFilter" onchange="filterData()">
-                <option value="">Semua Produk</option>
-            </select>
-        </div>
     </div>
 
     <div class="table-container">
@@ -196,20 +156,19 @@
             <thead>
                 <tr>
                     <th>No</th>
-                    <th>Tanggal Produksi</th>
-                    <th>Produk</th>
-                    <th>Ukuran</th>
-                    <th>Jumlah</th>
-                    <th>Status</th>
+                    <th>Nama Produk</th>
+                    <th>Warna</th>
+                    <th>Harga</th>
+                    <th>Ukuran & Stok</th>
                 </tr>
             </thead>
-            <tbody id="productionTableBody">
+            <tbody id="productTableBody">
                 <tr>
-                    <td colspan="6" class="empty-state">
+                    <td colspan="5" class="empty-state">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                         </svg>
-                        <p>Memuat data produksi...</p>
+                        <p>Memuat data produk...</p>
                     </td>
                 </tr>
             </tbody>
@@ -222,94 +181,63 @@
 
 @section('scripts')
 <script>
-    let productions = [];
-    let filteredProductions = [];
+    let products = [];
+    let filteredProducts = [];
     let currentPage = 1;
     const itemsPerPage = 10;
 
-    async function loadProductions() {
+    async function loadProducts() {
         try {
-            const response = await fetch('/product', {
+            const response = await fetch('/products', {
                 headers: {
                     'Authorization': 'Bearer ' + localStorage.getItem('token')
                 }
             });
             const data = await response.json();
-            console.log('Response result:', data);
             if (data.success) {
-                productions = data.data;
-                filteredProductions = productions;
-                populateProductFilter();
+                products = data.data;
+                filteredProducts = products;
                 renderTable();
             }
         } catch (error) {
-            console.error('Error loading productions');
+            console.error('Error loading products');
         }
     }
 
-    function populateProductFilter() {
-        const productSet = new Set();
-        productions.forEach(prod => {
-            if (prod.product_detail?.product) {
-                productSet.add(JSON.stringify({
-                    id: prod.productDdetail.product.id,
-                    name: prod.productDdetail.product.product_name
-                }));
-            }
-        });
-
-        const select = document.getElementById('productFilter');
-        select.innerHTML = '<option value="">Semua Produk</option>';
-
-        Array.from(productSet).forEach(productStr => {
-            const product = JSON.parse(productStr);
-            select.innerHTML += `<option value="${product.id}">${product.name}</option>`;
-        });
-    }
-
-    function filterData() {
-        const status = document.getElementById('statusFilter').value;
-        const productId = document.getElementById('productFilter').value;
-
-        filteredProductions = productions.filter(prod => {
-            const matchStatus = !status || prod.status === status;
-            const matchProduct = !productId || prod.product_detail?.product?.id == productId;
-            return matchStatus && matchProduct;
-        });
-
-        currentPage = 1;
-        renderTable();
-    }
-
     function renderTable() {
-        const tbody = document.getElementById('productionTableBody');
+        const tbody = document.getElementById('productTableBody');
         const start = (currentPage - 1) * itemsPerPage;
         const end = start + itemsPerPage;
-        const paginatedData = filteredProductions.slice(start, end);
+        const paginatedData = filteredProducts.slice(start, end);
 
         if (paginatedData.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="empty-state">
+                    <td colspan="5" class="empty-state">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                         </svg>
-                        <p>Tidak ada data produksi ditemukan</p>
+                        <p>Tidak ada produk ditemukan</p>
                     </td>
                 </tr>
             `;
         } else {
-            tbody.innerHTML = paginatedData.map((prod, index) => {
-                const statusClass = prod.status === 'Selesai' ? 'status-done' : 'status-progress';
+            tbody.innerHTML = paginatedData.map((product, index) => {
+                const detailsHtml = product.product_detail.map(detail => {
+                    let badgeClass = 'badge-stock';
+                    if (detail.product_stock === 0) badgeClass = 'badge-out';
+                    else if (detail.product_stock < 10) badgeClass = 'badge-low';
+
+                    return `<span class="badge ${badgeClass}">${detail.product_size}: ${detail.product_stock}</span>`;
+                }).join(' ');
 
                 return `
                     <tr>
                         <td>${start + index + 1}</td>
-                        <td>${new Date(prod.production_date).toLocaleDateString('id-ID')}</td>
-                        <td><span class="product-highlight">${prod.product_detail?.product?.product_name || 'N/A'}</span></td>
-                        <td>${prod.product_detail?.product_size || 'N/A'}</td>
-                        <td>${prod.quantity_produced}</td>
-                        <td><span class="status-badge ${statusClass}">${prod.status}</span></td>
+                        <td><strong>${product.product_name}</strong></td>
+                        <td>${product.product_color}</td>
+                        <td>Rp ${parseInt(product.product_price).toLocaleString('id-ID')}</td>
+                        <td>${detailsHtml}</td>
                     </tr>
                 `;
             }).join('');
@@ -319,7 +247,7 @@
     }
 
     function renderPagination() {
-        const totalPages = Math.ceil(filteredProductions.length / itemsPerPage);
+        const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
         const pagination = document.getElementById('pagination');
 
         if (totalPages <= 1) {
@@ -355,6 +283,16 @@
         renderTable();
     }
 
-    loadProductions();
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        const search = e.target.value.toLowerCase();
+        filteredProducts = products.filter(product =>
+            product.product_name.toLowerCase().includes(search) ||
+            product.product_color.toLowerCase().includes(search)
+        );
+        currentPage = 1;
+        renderTable();
+    });
+
+    loadProducts();
 </script>
 @endsection

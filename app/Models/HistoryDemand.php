@@ -19,7 +19,7 @@ class HistoryDemand extends Model
         'demand_quantity',
     ];
 
-    public function shipment()
+    public function shipments()
     {
         return $this->hasMany(Shipment::class, 'shipment_id', 'id');
     }

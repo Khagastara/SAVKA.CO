@@ -8,6 +8,7 @@ use App\Http\Controllers\ProductionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ShipmentController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ForecastingController;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -82,7 +83,24 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/distribution/shipments', function () {
         return view('distribution.shipment.index');})->name('distribution.shipment.index');
 
-    Route::get('/reports', [ReportController::class, 'index']);
-    Route::get('/reports/download/csv/{month}/{year}', [ReportController::class, 'downloadMonthlyReportCSV']);
-    Route::get('/reports/download/pdf/{month}/{year}', [ReportController::class, 'downloadMonthlyReportPDF']);
+
+    //Reports
+    Route::get('/owner/reports', function () {
+        return view('owner.report.index');
+    })->name('owner.reports');
+
+    // Route untuk API data (dipanggil oleh JavaScript)
+    Route::get('/owner/report/data', [ReportController::class, 'getReports'])->name('reports.data');
+
+    // Route untuk download
+    Route::get('/owner/report/download/csv/{month}/{year}', [ReportController::class, 'downloadMonthlyReportCSV'])->name('reports.download.csv');
+    Route::get('/owner/report/download/pdf/{month}/{year}', [ReportController::class, 'downloadMonthlyReportPDF'])->name('reports.download.pdf');
+
+    // Forecasting
+    Route::get('/forecasting', [ForecastingController::class, 'index'])->name('forecasting.index');
+    Route::match(['get', 'post'], '/forecasting/calculate', [ForecastingController::class, 'calculate'])->name('forecasting.calculate');
+
+    Route::get('/owner/forecasting', function () {
+        return view('owner.forecasting.index');
+    })->name('owner.forecasting');
 });

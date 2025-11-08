@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Response;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class ReportController extends Controller
 {
@@ -39,48 +40,111 @@ class ReportController extends Controller
         ]);
     }
 
+    public function getReports(Request $request)
+    {
+        $user = Auth::user();
+
+        if ($user->role !== 'Owner') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya owner yang dapat melihat laporan.'
+            ], 403);
+        }
+
+        try {
+            $month = $request->get('month', date('m'));
+            $year = $request->get('year', date('Y'));
+
+            $reports = Report::whereMonth('report_date', $month)
+                            ->whereYear('report_date', $year)
+                            ->orderBy('report_date', 'desc')
+                            ->get();
+
+            $totalIncome = $reports->sum('income');
+            $totalExpense = $reports->sum('expenses');
+            $netProfit = $totalIncome - $totalExpense;
+
+            return response()->json([
+                'success' => true,
+                'data' => $reports,
+                'summary' => [
+                    'total_income' => $totalIncome,
+                    'total_expense' => $totalExpense,
+                    'net_profit' => $netProfit
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memuat data laporan.'
+            ], 500);
+        }
+    }
+
     /**
      * Unduh laporan bulanan dalam format CSV
      */
+
     public function downloadMonthlyReportCSV($month, $year)
     {
         $user = Auth::user();
 
         if ($user->role !== 'Owner') {
-            return response()->json(['message' => 'Hanya owner yang dapat mengunduh laporan.'], 403);
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya owner yang dapat mengunduh laporan.'
+            ], 403);
         }
 
-        $reports = Report::whereMonth('report_date', $month)
-                         ->whereYear('report_date', $year)
-                         ->orderBy('report_date', 'asc')
-                         ->get(['report_date', 'description', 'income', 'expenses']);
+        try {
+            $reports = Report::whereMonth('report_date', $month)
+                            ->whereYear('report_date', $year)
+                            ->orderBy('report_date', 'asc')
+                            ->get(['report_date', 'description', 'income', 'expenses']);
 
-        if ($reports->isEmpty()) {
-            return response()->json(['message' => 'Tidak ada laporan untuk bulan dan tahun tersebut.'], 404);
-        }
+            if ($reports->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak ada laporan untuk bulan dan tahun tersebut.'
+                ], 404);
+            }
 
-        // Buat CSV
-        $csvHeader = ['Report Date', 'Description', 'Income', 'Expenses'];
-        $csvData = $reports->map(function ($report) {
-            return [
-                Carbon::parse($report->report_date)->format('Y-m-d'),
-                $report->description,
-                $report->income,
-                $report->expenses
+            $fileName = "Laporan_Keuangan_{$month}_{$year}.csv";
+
+            $headers = [
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => "attachment; filename=\"$fileName\"",
             ];
-        });
 
-        $fileName = "Monthly_Report_{$month}_{$year}.csv";
-        $handle = fopen($fileName, 'w');
-        fputcsv($handle, $csvHeader);
+            $callback = function() use ($reports) {
+                $file = fopen('php://output', 'w');
 
-        foreach ($csvData as $row) {
-            fputcsv($handle, $row);
+                // Add BOM for UTF-8
+                fputs($file, $bom = (chr(0xEF) . chr(0xBB) . chr(0xBF)));
+
+                fputcsv($file, ['Tanggal', 'Deskripsi', 'Pemasukan', 'Pengeluaran']);
+
+                foreach ($reports as $report) {
+                    fputcsv($file, [
+                        Carbon::parse($report->report_date)->format('d/m/Y'),
+                        $report->description,
+                        $report->income,
+                        $report->expenses
+                    ]);
+                }
+
+                fclose($file);
+            };
+
+            return Response::stream($callback, 200, $headers);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengunduh laporan.'
+            ], 500);
         }
-
-        fclose($handle);
-
-        return Response::download($fileName)->deleteFileAfterSend(true);
     }
 
     /**
@@ -91,30 +155,44 @@ class ReportController extends Controller
         $user = Auth::user();
 
         if ($user->role !== 'Owner') {
-            return response()->json(['message' => 'Hanya owner yang dapat mengunduh laporan.'], 403);
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya owner yang dapat mengunduh laporan.'
+            ], 403);
         }
 
-        $reports = Report::whereMonth('report_date', $month)
-                         ->whereYear('report_date', $year)
-                         ->orderBy('report_date', 'asc')
-                         ->get(['report_date', 'description', 'income', 'expenses']);
+        try {
+            $reports = Report::whereMonth('report_date', $month)
+                            ->whereYear('report_date', $year)
+                            ->orderBy('report_date', 'asc')
+                            ->get();
 
-        if ($reports->isEmpty()) {
-            return response()->json(['message' => 'Tidak ada laporan untuk bulan dan tahun tersebut.'], 404);
+            if ($reports->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak ada laporan untuk bulan dan tahun tersebut.'
+                ], 404);
+            }
+
+            $totalIncome = $reports->sum('income');
+            $totalExpenses = $reports->sum('expenses');
+            $netProfit = $totalIncome - $totalExpenses;
+
+            $monthName = Carbon::create($year, $month, 1)->locale('id')->translatedFormat('F');
+            $year = $year;
+
+            $pdf = Pdf::loadView('reports.monthly_pdf', compact(
+                'reports', 'monthName', 'year', 'totalIncome', 'totalExpenses', 'netProfit'
+            ));
+
+            return $pdf->download("Laporan_Keuangan_{$monthName}_{$year}.pdf");
+
+        } catch (\Exception $e) {
+            Log::error('PDF Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengunduh laporan PDF.'
+            ], 500);
         }
-
-        $totalIncome = $reports->sum('income');
-        $totalExpenses = $reports->sum('expenses');
-        $monthName = Carbon::create()->month($month)->translatedFormat('F');
-
-        $pdf = Pdf::loadView('reports.monthly_pdf', [
-            'reports' => $reports,
-            'month' => $monthName,
-            'year' => $year,
-            'totalIncome' => $totalIncome,
-            'totalExpenses' => $totalExpenses,
-        ]);
-
-        return $pdf->download("Monthly_Report_{$month}_{$year}.pdf");
     }
 }

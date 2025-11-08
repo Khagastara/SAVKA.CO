@@ -32,7 +32,7 @@ class Shipment extends Model
         return $this->belongsTo(Report::class, 'report_id', 'id');
     }
 
-    public function shipmentDetail()
+    public function shipmentDetails()
     {
         return $this->hasMany(ShipmentDetail::class, 'shipment_id', 'id');
     }

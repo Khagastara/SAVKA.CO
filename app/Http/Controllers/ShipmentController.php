@@ -25,12 +25,12 @@ class ShipmentController extends Controller
         $user = Auth::user();
 
         if ($user->role === 'Owner') {
-            $shipments = Shipment::with(['shipmentDetail.productDetail.product', 'user', 'report'])
+            $shipments = Shipment::with(['shipmentDetails.productDetail.product', 'user', 'report'])
             ->orderBy('shipment_date', 'DESC')
             ->orderBy('created_at', 'DESC')
             ->get();
         } else {
-            $shipments = Shipment::with(['shipmentDetail.productDetail.product', 'user', 'report'])
+            $shipments = Shipment::with(['shipmentDetails.productDetail.product', 'user', 'report'])
                 ->orderBy('shipment_date', 'DESC')
                 ->orderBy('created_at', 'DESC')
                 ->where('user_id', $user->id)
