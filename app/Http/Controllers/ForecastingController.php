@@ -45,98 +45,114 @@ class ForecastingController extends Controller
 
         $weekUsed = $validated['week_used'];
 
-        // Get all product details with product info
-        $productDetails = ProductDetail::with('product')->get();
+        // Get all products with their details
+        $products = Product::with('productDetail')->get();
+
         $forecastResults = [];
         $processedCount = 0;
         $skippedProducts = [];
 
-        foreach ($productDetails as $detail) {
-            // Get historical data using raw query builder
-            $historicalData = DB::table('shipment_details')
-                ->join('shipments', 'shipment_details.shipment_id', '=', 'shipments.id')
-                ->join('history_demands', 'shipments.history_demand_id', '=', 'history_demands.id')
-                ->where('shipment_details.product_detail_id', $detail->id)
-                ->select(
-                    'history_demands.id as history_id',
-                    'history_demands.year',
-                    'history_demands.month',
-                    'history_demands.week_number',
-                    'shipment_details.product_quantity'
-                )
-                ->orderBy('history_demands.year', 'desc')
-                ->orderBy('history_demands.month', 'desc')
-                ->orderBy('history_demands.week_number', 'desc')
-                ->limit($weekUsed)
-                ->get();
+        // Loop through each product
+        foreach ($products as $product) {
+            // Loop through each product detail (size variants)
+            foreach ($product->productDetail as $productDetail) {
 
-            $dataCount = $historicalData->count();
+                // Get historical shipment data for this specific product detail
+                $historicalData = DB::table('shipment_details')
+                    ->join('shipments', 'shipment_details.shipment_id', '=', 'shipments.id')
+                    ->join('history_demands', 'shipments.history_demand_id', '=', 'history_demands.id')
+                    ->where('shipment_details.product_detail_id', $productDetail->id)
+                    ->select(
+                        'history_demands.id as history_id',
+                        'history_demands.year',
+                        'history_demands.month',
+                        'history_demands.week_number',
+                        'shipment_details.product_quantity'
+                    )
+                    ->orderBy('history_demands.year', 'desc')
+                    ->orderBy('history_demands.month', 'desc')
+                    ->orderBy('history_demands.week_number', 'desc')
+                    ->limit($weekUsed)
+                    ->get();
 
-            // Skip if not enough data, but track it
-            if ($dataCount < 2) { // Minimal 2 data point untuk prediksi
-                $skippedProducts[] = [
-                    'product' => $detail->product->product_name ?? 'Unknown',
-                    'color' => $detail->product->product_color ?? 'Unknown',
-                    'size' => $detail->product_size ?? 'Unknown',
-                    'data_available' => $dataCount,
-                    'data_needed' => $weekUsed,
-                    'reason' => 'Minimal 2 data historis diperlukan'
-                ];
-                continue;
-            }
+                $dataCount = $historicalData->count();
 
-            // If data count is less than requested, use available data
-            $actualWeeksUsed = min($dataCount, $weekUsed);
+                // Skip if not enough data
+                if ($dataCount < 2) {
+                    $skippedProducts[] = [
+                        'product' => $product->product_name,
+                        'color' => $product->product_color,
+                        'size' => $productDetail->product_size,
+                        'data_available' => $dataCount,
+                        'data_needed' => $weekUsed,
+                        'reason' => 'Minimal 2 data historis diperlukan'
+                    ];
+                    continue;
+                }
 
-            // Calculate Single Moving Average
-            $totalDemand = $historicalData->sum('product_quantity');
-            $averageDemand = $totalDemand / $actualWeeksUsed;
-            $predictedDemand = round($averageDemand);
+                // Use available data if less than requested
+                $actualWeeksUsed = min($dataCount, $weekUsed);
 
-            // Get latest data for accuracy calculation
-            $latestData = $historicalData->first();
-            $actualDemand = $latestData->product_quantity;
+                // Calculate Single Moving Average
+                $totalDemand = $historicalData->sum('product_quantity');
+                $averageDemand = $totalDemand / $actualWeeksUsed;
+                $predictedDemand = round($averageDemand);
 
-            // Calculate accuracy (MAPE - Mean Absolute Percentage Error)
-            if ($actualDemand > 0) {
-                $accuracy = max(0, round(100 - abs(($predictedDemand - $actualDemand) / $actualDemand * 100)));
-            } else {
-                $accuracy = 0;
-            }
+                // Get latest data for accuracy calculation
+                $latestData = $historicalData->first();
+                $actualDemand = $latestData->product_quantity;
 
-            // Get forecast date (next month from latest data)
-            $forecastDate = Carbon::create($latestData->year, $latestData->month)
-                ->addMonth()
-                ->endOfMonth();
+                // Calculate accuracy (MAPE - Mean Absolute Percentage Error)
+                if ($actualDemand > 0) {
+                    $accuracy = max(0, round(100 - abs(($predictedDemand - $actualDemand) / $actualDemand * 100), 2));
+                } else {
+                    $accuracy = 0;
+                }
 
-            // Save to database
-            try {
-                $forecast = Forecasting::create([
-                    'forecast_date' => $forecastDate,
-                    'week_used' => $actualWeeksUsed,
-                    'predicted_demand' => $predictedDemand,
-                    'accurancy' => $accuracy,
-                    'history_demand_id' => $latestData->history_id,
-                ]);
+                // Get forecast date (next week from latest data)
+                $forecastDate = Carbon::create($latestData->year, $latestData->month)
+                    ->addMonth()
+                    ->endOfMonth();
 
-                $forecastResults[] = [
-                    'product' => $detail->product->product_name ?? 'Unknown',
-                    'product_color' => $detail->product->product_color ?? 'Unknown',
-                    'size' => $detail->product_size ?? 'Unknown',
-                    'predicted_demand' => $predictedDemand,
-                    'accuracy' => $accuracy,
-                    'forecast_date' => $forecastDate->format('d M Y'),
-                    'weeks_analyzed' => $actualWeeksUsed,
-                    'total_demand' => $totalDemand,
-                    'average_demand' => round($averageDemand, 2),
-                    'note' => $actualWeeksUsed < $weekUsed ? "Hanya {$actualWeeksUsed} minggu data tersedia" : null
-                ];
+                // Save to database
+                try {
+                    $forecast = Forecasting::create([
+                        'forecast_date' => $forecastDate,
+                        'week_used' => $actualWeeksUsed,
+                        'predicted_demand' => $predictedDemand,
+                        'accurancy' => $accuracy,
+                        'history_demand_id' => $latestData->history_id,
+                    ]);
 
-                $processedCount++;
+                    $forecastResults[] = [
+                        'forecast_id' => $forecast->id,
+                        'product' => $product->product_name,
+                        'product_color' => $product->product_color,
+                        'size' => $productDetail->product_size,
+                        'predicted_demand' => $predictedDemand,
+                        'accuracy' => $accuracy,
+                        'forecast_date' => $forecastDate->format('d M Y'),
+                        'weeks_analyzed' => $actualWeeksUsed,
+                        'total_demand' => $totalDemand,
+                        'average_demand' => round($averageDemand, 2),
+                        'actual_last_week' => $actualDemand,
+                        'note' => $actualWeeksUsed < $weekUsed ? "Hanya {$actualWeeksUsed} minggu data tersedia" : null
+                    ];
 
-                Log::info("Forecast created for product detail {$detail->id} with {$actualWeeksUsed} weeks");
-            } catch (\Exception $e) {
-                Log::error("Error creating forecast for product detail {$detail->id}: " . $e->getMessage());
+                    $processedCount++;
+
+                    Log::info("Forecast created for product detail {$productDetail->id} ({$product->product_name} - {$productDetail->product_size}) with {$actualWeeksUsed} weeks");
+
+                } catch (\Exception $e) {
+                    Log::error("Error creating forecast for product detail {$productDetail->id}: " . $e->getMessage());
+
+                    $skippedProducts[] = [
+                        'product' => $product->product_name,
+                        'color' => $product->product_color,
+                        'size' => $productDetail->product_size,
+                        'reason' => 'Error saat menyimpan: ' . $e->getMessage()
+                    ];
+                }
             }
         }
 
@@ -147,7 +163,7 @@ class ForecastingController extends Controller
                 'data' => [],
                 'skipped_products' => $skippedProducts,
                 'summary' => [
-                    'total_products' => $productDetails->count(),
+                    'total_product_variants' => ProductDetail::count(),
                     'processed' => 0,
                     'skipped' => count($skippedProducts),
                     'suggestion' => 'Tambahkan lebih banyak data pengiriman untuk setiap produk'
@@ -158,9 +174,9 @@ class ForecastingController extends Controller
         return response()->json([
             'message' => "Forecasting selesai! Berhasil menganalisis {$processedCount} varian produk.",
             'data' => $forecastResults,
-            'skipped_products' => $skippedProducts,
+            'skipped_products' => count($skippedProducts) > 0 ? $skippedProducts : null,
             'summary' => [
-                'total_products' => $productDetails->count(),
+                'total_product_variants' => ProductDetail::count(),
                 'processed' => $processedCount,
                 'skipped' => count($skippedProducts),
                 'weeks_requested' => $weekUsed,
@@ -168,6 +184,6 @@ class ForecastingController extends Controller
                     ? round(array_sum(array_column($forecastResults, 'accuracy')) / $processedCount, 2)
                     : 0
             ]
-        ]);
+        ], 200);
     }
 }

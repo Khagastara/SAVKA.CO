@@ -428,7 +428,7 @@
                 <label>Harga (Rp)</label>
                 <input type="number" id="productPrice" required min="0">
             </div>
-            
+
             <div id="detailsContainer">
                 <label style="display: block; margin-bottom: 12px; font-weight: 600;">Detail Produk (Ukuran & Stok)</label>
                 <button type="button" class="btn-add-detail" onclick="addDetailRow()">
@@ -454,12 +454,33 @@
     const itemsPerPage = 10;
     let isEditMode = false;
 
-    // Load products
+    function getCsrfToken() {
+        // Try to get from meta tag first
+        const metaTag = document.querySelector('meta[name="csrf-token"]');
+        if (metaTag) {
+            return metaTag.getAttribute('content');
+        }
+
+        // Try to get from cookie
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'XSRF-TOKEN') {
+                return decodeURIComponent(value);
+            }
+        }
+
+        return null;
+    }
+
+    // Load products - UPDATED
     async function loadProducts() {
         try {
             const response = await fetch('/products', {
                 headers: {
-                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken() // Add CSRF token
                 }
             });
             const data = await response.json();
@@ -497,7 +518,7 @@
                     let badgeClass = 'badge-stock';
                     if (detail.product_stock === 0) badgeClass = 'badge-out';
                     else if (detail.product_stock < 10) badgeClass = 'badge-low';
-                    
+
                     return `<span class="badge ${badgeClass}">${detail.product_size}: ${detail.product_stock}</span>`;
                 }).join(' ');
 
@@ -523,7 +544,7 @@
     function renderPagination() {
         const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
         const pagination = document.getElementById('pagination');
-        
+
         if (totalPages <= 1) {
             pagination.innerHTML = '';
             return;
@@ -560,7 +581,7 @@
     // Search functionality
     document.getElementById('searchInput').addEventListener('input', function(e) {
         const search = e.target.value.toLowerCase();
-        filteredProducts = products.filter(product => 
+        filteredProducts = products.filter(product =>
             product.product_name.toLowerCase().includes(search) ||
             product.product_color.toLowerCase().includes(search)
         );
@@ -571,10 +592,12 @@
     // Modal functions
     function openAddModal() {
         isEditMode = false;
+        detailCounter = 0; // Reset counter
         document.getElementById('modalTitle').textContent = 'Tambah Produk';
         document.getElementById('productForm').reset();
         document.getElementById('productId').value = '';
         document.getElementById('detailRows').innerHTML = '';
+        // Add default 3 rows for new product
         addDetailRow();
         addDetailRow();
         addDetailRow();
@@ -583,18 +606,32 @@
 
     function editProduct(id) {
         isEditMode = true;
+        detailCounter = 0; // Reset counter
         const product = products.find(p => p.id === id);
+
+        if (!product) {
+            showAlert('Produk tidak ditemukan', 'error');
+            return;
+        }
+
         document.getElementById('modalTitle').textContent = 'Edit Produk';
         document.getElementById('productId').value = product.id;
         document.getElementById('productName').value = product.product_name;
         document.getElementById('productColor').value = product.product_color;
         document.getElementById('productPrice').value = product.product_price;
-        
+
+        // Clear and load existing details
         document.getElementById('detailRows').innerHTML = '';
-        product.product_detail.forEach(detail => {
-            addDetailRow(detail);
-        });
-        
+
+        if (product.product_detail && product.product_detail.length > 0) {
+            product.product_detail.forEach(detail => {
+                addDetailRow(detail);
+            });
+        } else {
+            // If no details, add empty rows
+            addDetailRow();
+        }
+
         document.getElementById('productModal').classList.add('show');
     }
 
@@ -603,13 +640,17 @@
     }
 
     let detailCounter = 0;
+
     function addDetailRow(detail = null) {
         const container = document.getElementById('detailRows');
         const row = document.createElement('div');
         row.className = 'detail-row';
         row.id = `detail-${detailCounter}`;
-        
+
+        const currentCounter = detailCounter;
+
         row.innerHTML = `
+            <input type="hidden" class="detail-id" value="${detail && detail.id ? detail.id : ''}">
             <div class="form-group" style="margin-bottom: 0;">
                 <select class="detail-size" required>
                     <option value="">Pilih Ukuran</option>
@@ -619,39 +660,69 @@
                 </select>
             </div>
             <div class="form-group" style="margin-bottom: 0;">
-                <input type="number" class="detail-stock" placeholder="Stok" value="${detail ? detail.product_stock : ''}" required min="0">
+                <input type="number" class="detail-stock" placeholder="Stok" value="${detail && detail.product_stock ? detail.product_stock : ''}" required min="0">
             </div>
-            <button type="button" class="btn-remove-detail" onclick="removeDetailRow(${detailCounter})">
+            <button type="button" class="btn-remove-detail" onclick="removeDetailRow(${currentCounter})">
                 <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
         `;
-        
+
         container.appendChild(row);
         detailCounter++;
     }
 
     function removeDetailRow(id) {
         const row = document.getElementById(`detail-${id}`);
-        if (row) row.remove();
+        if (row) {
+            // Check if this is the last row
+            const remainingRows = document.querySelectorAll('.detail-row').length;
+            if (remainingRows <= 1) {
+                showAlert('Minimal harus ada satu detail produk', 'error');
+                return;
+            }
+            row.remove();
+        }
     }
 
     // Form submit
     document.getElementById('productForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        
+
         const details = [];
+        const seenSizes = new Set();
+        let hasDuplicate = false;
+
         document.querySelectorAll('.detail-row').forEach(row => {
+            const detailId = row.querySelector('.detail-id')?.value || null;
             const size = row.querySelector('.detail-size').value;
             const stock = row.querySelector('.detail-stock').value;
-            if (size && stock) {
-                details.push({
+
+            if (size && stock !== '') {
+                if (seenSizes.has(size)) {
+                    hasDuplicate = true;
+                    return;
+                }
+                seenSizes.add(size);
+
+                const detailObj = {
                     product_size: size,
                     product_stock: parseInt(stock)
-                });
+                };
+
+                if (detailId) {
+                    detailObj.id = parseInt(detailId);
+                }
+
+                details.push(detailObj);
             }
         });
+
+        if (hasDuplicate) {
+            showAlert('Tidak boleh ada ukuran yang sama', 'error');
+            return;
+        }
 
         if (details.length === 0) {
             showAlert('Tambahkan minimal satu detail produk', 'error');
@@ -667,38 +738,39 @@
 
         try {
             const productId = document.getElementById('productId').value;
-            let url = '/api/products';
+            let url = '/products/store';
             let method = 'POST';
-            
+
             if (isEditMode && productId) {
-                url = `/api/products/${productId}`;
+                url = `/products/${productId}`;
                 method = 'PUT';
-                delete formData.details; // Edit mode doesn't update details
             }
 
             const response = await fetch(url, {
                 method: method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken() // Add CSRF token
                 },
                 body: JSON.stringify(formData)
             });
 
             const data = await response.json();
-            
-            if (data.success) {
+
+            if (response.ok && data.success) {
                 showAlert(data.message, 'success');
                 closeModal();
-                loadProducts();
+                await loadProducts();
             } else {
-                showAlert('Gagal menyimpan produk', 'error');
+                showAlert(data.message || 'Gagal menyimpan produk', 'error');
             }
         } catch (error) {
-            showAlert('Terjadi kesalahan', 'error');
+            console.error('Error:', error);
+            showAlert('Terjadi kesalahan saat menyimpan produk', 'error');
         }
     });
-
     // Alert function
     function showAlert(message, type) {
         const container = document.getElementById('alertContainer');
@@ -706,7 +778,7 @@
         alert.className = `alert alert-${type} show`;
         alert.textContent = message;
         container.appendChild(alert);
-        
+
         setTimeout(() => {
             alert.classList.remove('show');
             setTimeout(() => alert.remove(), 300);

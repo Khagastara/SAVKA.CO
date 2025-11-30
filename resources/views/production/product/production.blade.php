@@ -486,7 +486,7 @@
                 const select = document.getElementById('materialSelect');
                 select.innerHTML = '<option value="">Pilih Material</option>';
                 materials.forEach(material => {
-                    select.innerHTML += `<option value="${material.id}">${material.material_name} (Stok: ${material.material_stock})</option>`;
+                    select.innerHTML += `<option value="${material.id}">${material.material_name} (Stok: ${material.material_quantity})</option>`;
                 });
             }
         } catch (error) {

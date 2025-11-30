@@ -17,9 +17,23 @@ Route::redirect('/', '/login');
 
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login.form');
 Route::post('/login', [LoginController::class, 'login'])->name('login');
+
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 Route::middleware(['auth'])->group(function () {
+
+    Route::get('/owner/dashboard', function () {
+        return view('owner.dashboard');
+    })->name('owner.dashboard');
+
+    Route::get('/production/dashboard', function () {
+        return view('production.dashboard');
+    })->name('production.dashboard');
+
+    Route::get('/distribution/dashboard', function () {
+        return view('distribution.dashboard');
+    })->name('distribution.dashboard');
+
     // Common for all users
     Route::get('/account/profile', [AccountController::class, 'showProfile']);
     Route::put('/account/profile', [AccountController::class, 'updateProfile'])->name('account.update');
@@ -37,6 +51,8 @@ Route::middleware(['auth'])->group(function () {
 
     // View all materials (Owner & Production Staff)
     Route::get('/materials', [SupplyController::class, 'index'])->name('materials');
+    Route::post('/materials', [SupplyController::class, 'storeMaterial'])->name('materials.store');
+    Route::post('/procurements', [SupplyController::class, 'storeProcurement'])->name('procurements');
 
     Route::get('/supply/material', function () {
         return view('owner.supply.material');})->name('owner.supply.material');
@@ -46,7 +62,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Product
     Route::get('/products', [ProductController::class, 'index'])->name('products');
-    Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+    Route::post('/products/store', [ProductController::class, 'store'])->name('products.store');
+    Route::put('/products/{id}', [ProductController::class, 'update'])->name('products.update');
+    
     Route::get('/products/index', function () {
         return view('owner.product.index');
     })->name('owner.product');

@@ -340,6 +340,16 @@
         background: var(--sage-green);
         color: white;
     }
+
+    .note-warning {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 10px 12px;
+        margin-top: 10px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        color: #856404;
+    }
 </style>
 @endsection
 
@@ -348,7 +358,6 @@
     <!-- Control Panel -->
     <div class="prediction-control">
         <div class="control-title">
-            <span>⚡</span>
             <span>AI Prediction Control</span>
             <span class="ai-badge">AI</span>
         </div>
@@ -367,12 +376,12 @@
             </div>
 
             <button type="submit" id="btnPredict" class="btn-predict">
-                <span id="btnText">🚀 Mulai Prediksi AI</span>
+                <span id="btnText">Mulai Prediksi AI</span>
             </button>
         </form>
 
         <div class="info-box">
-            <strong>💡 Cara Kerja:</strong><br>
+            <strong>Cara Kerja:</strong><br>
             Sistem AI akan menganalisis data permintaan historis menggunakan metode Single Moving Average untuk memprediksi permintaan produk di masa mendatang.
         </div>
     </div>
@@ -382,13 +391,12 @@
         <div class="results-header">
             <div class="results-title">Hasil Prediksi</div>
             <button class="btn-export" id="btnExport" style="display: none;">
-                📊 Export Data
+                Export Data
             </button>
         </div>
 
         <div id="resultsContent">
             <div class="empty-state">
-                <div class="empty-state-icon">🤖</div>
                 <h3>Siap Melakukan Prediksi</h3>
                 <p>Atur parameter dan klik tombol "Mulai Prediksi AI" untuk memulai analisis</p>
             </div>
@@ -446,23 +454,68 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
 
             if (result.data && result.data.length > 0) {
-                // Transform data for display
-                const displayData = result.data.map(f => ({
-                    product: f.history_demand?.shipment?.shipment_detail?.[0]?.product?.product_name || 'N/A',
-                    product_color: f.history_demand?.shipment?.shipment_detail?.[0]?.product?.product_color || 'N/A',
-                    size: 'N/A', // Add proper relation if needed
-                    predicted_demand: f.predicted_demand,
-                    accuracy: f.accurancy
-                }));
-
-                forecastData = displayData;
-                displayResults(displayData);
-                displayStats(displayData);
+                forecastData = result.data;
+                displayExistingForecasts(result.data);
+                displayExistingStats(result.data);
             }
         } catch (error) {
             console.log('No previous forecast data:', error);
-            // Don't show error, just leave empty state
         }
+    }
+
+    function displayExistingForecasts(data) {
+        let html = '';
+        data.forEach((forecast, index) => {
+            const accuracyClass = forecast.accurancy >= 80 ? 'accuracy-high' :
+                                 forecast.accurancy >= 60 ? 'accuracy-medium' : 'accuracy-low';
+
+            html += `
+                <div class="prediction-card" style="animation-delay: ${index * 0.1}s">
+                    <div class="card-header">
+                        <div class="product-info">
+                            <div class="product-name">${forecast.product_name || 'Produk'}</div>
+                            <div class="product-meta">
+                                Warna: ${forecast.product_color || 'N/A'} • Ukuran: ${forecast.product_size || 'N/A'}
+                            </div>
+                            <div style="font-size: 0.85rem; color: #666; margin-top: 4px;">
+                                ${new Date(forecast.forecast_date).toLocaleDateString('id-ID', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric'
+                                })} • ${forecast.week_used} minggu data
+                            </div>
+                        </div>
+                        <div class="accuracy-badge ${accuracyClass}">
+                            ${forecast.accurancy}% Akurat
+                        </div>
+                    </div>
+                    <div class="prediction-value">
+                        <span class="value-label">Prediksi Permintaan:</span>
+                        <span class="value-number">${forecast.predicted_demand}</span>
+                        <span class="value-unit">unit</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        resultsContent.innerHTML = html;
+        btnExport.style.display = 'block';
+    }
+
+    function displayExistingStats(data) {
+        if (data.length === 0) return;
+
+        const totalProducts = data.length;
+        const avgAccuracy = Math.round(
+            data.reduce((sum, item) => sum + item.accurancy, 0) / data.length
+        );
+        const totalDemand = data.reduce((sum, item) => sum + item.predicted_demand, 0);
+
+        document.getElementById('totalProducts').textContent = totalProducts;
+        document.getElementById('avgAccuracy').textContent = avgAccuracy + '%';
+        document.getElementById('totalDemand').textContent = totalDemand;
+
+        statsSection.style.display = 'block';
     }
 
     form.addEventListener('submit', async function(e) {
@@ -470,13 +523,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const weekUsed = document.getElementById('weekUsed').value;
 
-        // Validate input
         if (!weekUsed || weekUsed < 2 || weekUsed > 6) {
             showError('Jumlah minggu harus antara 2-6');
             return;
         }
 
-        // Show AI thinking state
         showThinkingState();
 
         try {
@@ -498,14 +549,17 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.ok && result.data) {
                 forecastData = result.data;
 
-                // Add small delay for better UX (AI thinking effect)
                 setTimeout(() => {
-                    displayResults(result.data);
-                    displayStats(result.data);
+                    displayResults(result.data, result.skipped_products, result.summary);
+                    displayStats(result.data, result.summary);
                 }, 1500);
             } else {
                 setTimeout(() => {
-                    showError(result.message || 'Terjadi kesalahan saat melakukan prediksi');
+                    if (result.skipped_products && result.summary) {
+                        showDetailedError(result.message, result.skipped_products, result.summary);
+                    } else {
+                        showError(result.message || 'Terjadi kesalahan saat melakukan prediksi');
+                    }
                 }, 1000);
             }
         } catch (error) {
@@ -519,12 +573,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function showThinkingState() {
         btnPredict.disabled = true;
         btnPredict.classList.add('processing');
-        btnText.innerHTML = '🧠 AI Sedang Berpikir...';
+        btnText.innerHTML = 'AI Sedang Berpikir...';
         btnPredict.innerHTML = btnText.outerHTML + '<div class="processing-animation"></div>';
 
         resultsContent.innerHTML = `
             <div class="ai-thinking">
-                <h3>🤖 AI Sedang Menganalisis Data...</h3>
+                <h3>AI Sedang Menganalisis Data...</h3>
                 <div class="thinking-dots">
                     <span></span>
                     <span></span>
@@ -538,15 +592,19 @@ document.addEventListener('DOMContentLoaded', function() {
         btnExport.style.display = 'none';
     }
 
-    function displayResults(data) {
+    function displayResults(data, skippedProducts, summary) {
         if (data.length === 0) {
-            resultsContent.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">⚠️</div>
-                    <h3>Data Tidak Mencukupi</h3>
-                    <p>Tidak ada cukup data historis untuk melakukan prediksi</p>
-                </div>
-            `;
+            if (skippedProducts && summary) {
+                showDetailedError('Tidak ada produk yang dapat dianalisis', skippedProducts, summary);
+            } else {
+                resultsContent.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <h3>Data Tidak Mencukupi</h3>
+                        <p>Tidak ada cukup data historis untuk melakukan prediksi</p>
+                    </div>
+                `;
+            }
             resetButton();
             return;
         }
@@ -564,6 +622,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="product-meta">
                                 Warna: ${item.product_color} • Ukuran: ${item.size}
                             </div>
+                            ${item.note ? `
+                                <div class="note-warning">
+                                    ${item.note}
+                                </div>
+                            ` : ''}
                         </div>
                         <div class="accuracy-badge ${accuracyClass}">
                             ${item.accuracy}% Akurat
@@ -574,22 +637,31 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="value-number">${item.predicted_demand}</span>
                         <span class="value-unit">unit</span>
                     </div>
+                    <div style="margin-top: 12px; font-size: 0.85rem; color: #666;">
+                        Total permintaan: ${item.total_demand} • Rata-rata: ${item.average_demand} • Minggu: ${item.weeks_analyzed}
+                    </div>
                 </div>
             `;
         });
 
         resultsContent.innerHTML = html;
+
+        // Show skipped products warning if any
+        if (skippedProducts && skippedProducts.length > 0) {
+            showSkippedInfo(skippedProducts, summary);
+        }
+
         resetButton();
         btnExport.style.display = 'block';
     }
 
-    function displayStats(data) {
+    function displayStats(data, summary) {
         if (data.length === 0) return;
 
-        const totalProducts = data.length;
-        const avgAccuracy = Math.round(
-            data.reduce((sum, item) => sum + item.accuracy, 0) / data.length
-        );
+        const totalProducts = summary ? summary.processed : data.length;
+        const avgAccuracy = summary && summary.average_accuracy ?
+            summary.average_accuracy :
+            Math.round(data.reduce((sum, item) => sum + item.accuracy, 0) / data.length);
         const totalDemand = data.reduce((sum, item) => sum + item.predicted_demand, 0);
 
         document.getElementById('totalProducts').textContent = totalProducts;
@@ -619,7 +691,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 skippedHtml += `
                     <div style="background: #fff3cd; padding: 8px; margin-bottom: 8px; border-radius: 6px; font-size: 0.85rem;">
                         <strong>${item.product}</strong> (${item.color}, ${item.size})<br>
-                        Data: ${item.data_available}/${item.data_needed} minggu
+                        Data: ${item.data_available}/${item.data_needed} minggu - ${item.reason}
                     </div>
                 `;
             });
@@ -636,8 +708,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p>${message}</p>
                 ${summary ? `
                     <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px; text-align: left;">
-                        <strong>📊 Ringkasan:</strong><br>
-                        • Total Produk: ${summary.total_products}<br>
+                        <strong>Ringkasan:</strong><br>
+                        • Total Varian Produk: ${summary.total_product_variants || summary.total_products}<br>
                         • Berhasil Diproses: ${summary.processed}<br>
                         • Dilewati: ${summary.skipped}<br>
                         ${summary.suggestion ? `<br><em>${summary.suggestion}</em>` : ''}
@@ -655,8 +727,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const infoHtml = `
             <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-top: 20px; border-radius: 8px;">
                 <strong>⚠️ Perhatian:</strong> ${skippedProducts.length} produk dilewati karena data tidak mencukupi.
-                <button onclick="document.getElementById('skippedModal').style.display='block'"
-                        style="margin-left: 10px; padding: 5px 10px; background: #ffc107; border: none; border-radius: 4px; cursor: pointer;">
+                <button onclick="showSkippedModal()" class="btn-export" style="margin-left: 10px; padding: 5px 15px; display: inline-block;">
                     Lihat Detail
                 </button>
             </div>
@@ -664,8 +735,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div style="background: white; max-width: 600px; margin: 0 auto; padding: 30px; border-radius: 16px; max-height: 80vh; overflow-y: auto;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <h3>Produk yang Dilewati (${skippedProducts.length})</h3>
-                        <button onclick="document.getElementById('skippedModal').style.display='none'"
-                                style="padding: 5px 15px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <button onclick="hideSkippedModal()" style="padding: 5px 15px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer;">
                             Tutup
                         </button>
                     </div>
@@ -673,7 +743,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div style="background: #f8f9fa; padding: 12px; margin-bottom: 10px; border-radius: 8px;">
                             <strong>${item.product}</strong><br>
                             <small>Warna: ${item.color} • Ukuran: ${item.size}</small><br>
-                            <small style="color: #dc3545;">Data tersedia: ${item.data_available}/${item.data_needed} minggu</small>
+                            <small style="color: #dc3545;">${item.reason || 'Data tersedia: ' + item.data_available + '/' + item.data_needed + ' minggu'}</small>
                         </div>
                     `).join('')}
                 </div>
@@ -683,10 +753,19 @@ document.addEventListener('DOMContentLoaded', function() {
         resultsContent.insertAdjacentHTML('beforeend', infoHtml);
     }
 
+    // Global functions for modal
+    window.showSkippedModal = function() {
+        document.getElementById('skippedModal').style.display = 'block';
+    };
+
+    window.hideSkippedModal = function() {
+        document.getElementById('skippedModal').style.display = 'none';
+    };
+
     function resetButton() {
         btnPredict.disabled = false;
         btnPredict.classList.remove('processing');
-        btnText.innerHTML = '🚀 Mulai Prediksi AI';
+        btnText.innerHTML = 'Mulai Prediksi AI';
         btnPredict.innerHTML = btnText.outerHTML;
     }
 
@@ -694,29 +773,51 @@ document.addEventListener('DOMContentLoaded', function() {
         if (forecastData.length === 0) return;
 
         const csv = convertToCSV(forecastData);
-        downloadCSV(csv, 'forecasting-results.csv');
+        downloadCSV(csv, 'forecasting-results-' + new Date().toISOString().split('T')[0] + '.csv');
     });
 
     function convertToCSV(data) {
-        const headers = ['Produk', 'Warna', 'Ukuran', 'Prediksi Permintaan', 'Akurasi (%)'];
-        const rows = data.map(item => [
-            item.product,
-            item.product_color,
-            item.size,
-            item.predicted_demand,
-            item.accuracy
-        ]);
-
-        return [headers, ...rows].map(row => row.join(',')).join('\n');
+        // Check if data is from new calculation (has product field) or existing forecast
+        if (data[0] && data[0].product) {
+            // New calculation data
+            const headers = ['Produk', 'Warna', 'Ukuran', 'Prediksi Permintaan', 'Akurasi (%)', 'Tanggal Forecast', 'Minggu Dianalisis', 'Total Demand', 'Rata-rata Demand'];
+            const rows = data.map(item => [
+                item.product,
+                item.product_color,
+                item.size,
+                item.predicted_demand,
+                item.accuracy,
+                item.forecast_date,
+                item.weeks_analyzed,
+                item.total_demand,
+                item.average_demand
+            ]);
+            return [headers, ...rows].map(row => row.join(',')).join('\n');
+        } else {
+            // Existing forecast data with product info
+            const headers = ['Produk', 'Warna', 'Ukuran', 'Prediksi Permintaan', 'Akurasi (%)', 'Tanggal Forecast', 'Minggu Digunakan'];
+            const rows = data.map(item => [
+                item.product_name || 'N/A',
+                item.product_color || 'N/A',
+                item.product_size || 'N/A',
+                item.predicted_demand,
+                item.accurancy,
+                item.forecast_date,
+                item.week_used
+            ]);
+            return [headers, ...rows].map(row => row.join(',')).join('\n');
+        }
     }
 
     function downloadCSV(csv, filename) {
-        const blob = new Blob([csv], { type: 'text/csv' });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = filename;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
     }
 });

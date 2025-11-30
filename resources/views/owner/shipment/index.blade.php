@@ -236,20 +236,35 @@
         const shipment = shipments.find(s => s.id === id);
         if (!shipment) return;
 
-        if (shipment.shipment_detail && shipment.shipment_detail.length > 0) {
-            const firstDetail = shipment.shipment_detail[0];
-            console.log('Available fields in product_detail:', Object.keys(firstDetail.product_detail || {}));
-
-            // Jika ada product, cek field di product juga
-            if (firstDetail.product_detail?.product) {
-                console.log('Available fields in product:', Object.keys(firstDetail.product_detail.product));
-            }
-        }
-
         const detailContent = document.getElementById('detailContent');
         detailContent.innerHTML = `
             <div class="grid grid-cols-2 gap-4">
-                <!-- ... bagian lainnya tetap sama ... -->
+                <div>
+                    <p class="text-sm text-gray-500">Tanggal Pengiriman</p>
+                    <p class="text-base font-semibold text-gray-800">${formatDate(shipment.shipment_date)}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500">Status</p>
+                    <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                        shipment.shipment_status === 'Sampai Tujuan'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }">
+                        ${shipment.shipment_status}
+                    </span>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500">Alamat Tujuan</p>
+                    <p class="text-base font-semibold text-gray-800">${shipment.destination_address}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500">Staff Pengirim</p>
+                    <p class="text-base font-semibold text-gray-800">${shipment.user?.name || '-'}</p>
+                </div>
+                <div class="col-span-2">
+                    <p class="text-sm text-gray-500">Total Harga</p>
+                    <p class="text-xl font-bold text-green-600">Rp ${formatPrice(shipment.total_price)}</p>
+                </div>
             </div>
 
             <div class="mt-6">
@@ -266,15 +281,17 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y">
-                            ${shipment.shipment_detail?.map(detail => {
+                            ${shipment.shipment_details?.map(detail => {
+                                // Akses data product melalui product_detail
                                 const productName = detail.product_detail?.product?.product_name || '-';
                                 const productColor = detail.product_detail?.product?.product_color || '-';
+                                const productSize = detail.product_detail?.product_size || '-';
 
                                 return `
                                     <tr>
                                         <td class="px-4 py-2 text-sm">${productName}</td>
                                         <td class="px-4 py-2 text-sm">${productColor}</td>
-                                        <td class="px-4 py-2 text-sm">${detail.product_detail?.product_size || '-'}</td>
+                                        <td class="px-4 py-2 text-sm">${productSize}</td>
                                         <td class="px-4 py-2 text-sm">${detail.product_quantity}</td>
                                         <td class="px-4 py-2 text-sm">Rp ${formatPrice(detail.sub_total)}</td>
                                     </tr>
